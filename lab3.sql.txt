@@ -1,0 +1,273 @@
+
+CREATE TABLE Airline_info (
+    airline_id INT PRIMARY KEY NOT NULL,
+    airline_code VARCHAR(30) NOT NULL,
+    airline_name VARCHAR(50) NOT NULL,
+    airline_country VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    info VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE Airport (
+    airport_id INT PRIMARY KEY NOT NULL,
+    airport_name VARCHAR(50) NOT NULL,
+    country VARCHAR(50) NOT NULL,
+    state VARCHAR(50) NOT NULL,
+    city VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE Passengers (
+    passenger_id INT PRIMARY KEY NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    gender VARCHAR(50) NOT NULL,
+    country_of_citizenship VARCHAR(50) NOT NULL,
+    country_of_residence VARCHAR(50) NOT NULL,
+    passport_number VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE Flights (
+    flight_id INT PRIMARY KEY NOT NULL,
+    sch_departure_time TIMESTAMP NOT NULL,
+    sch_arrival_time TIMESTAMP NOT NULL,
+    departing_airport_id INT NOT NULL,
+    arriving_airport_id INT NOT NULL,
+    departing_gate VARCHAR(50) NOT NULL,
+    arriving_gate VARCHAR(50) NOT NULL,
+    airline_id INT NOT NULL,
+    act_departure_time TIMESTAMP NOT NULL,
+    act_arrival_time TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE Booking (
+    booking_id INT PRIMARY KEY NOT NULL,
+    flight_id INT NOT NULL,
+    passenger_id INT NOT NULL,
+    booking_platform VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    price DECIMAL(7,2) NOT NULL
+);
+
+CREATE TABLE Security_check (
+    security_check_id INT PRIMARY KEY NOT NULL,
+    check_result VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    passenger_id INT NOT NULL
+);
+
+CREATE TABLE Baggage_check (
+    baggage_check_id INT PRIMARY KEY NOT NULL,
+    check_result VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    booking_id INT NOT NULL,
+    passenger_id INT NOT NULL
+);
+
+CREATE TABLE Baggage (
+    baggage_id INT PRIMARY KEY NOT NULL,
+    weight_in_kg DECIMAL(4,2) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    booking_id INT NOT NULL
+);
+
+CREATE TABLE Boarding_pass (
+    boarding_pass_id INT PRIMARY KEY NOT NULL,
+    booking_id INT NOT NULL,
+    seat VARCHAR(50) NOT NULL,
+    boarding_time TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE Booking_flight (
+    booking_flight_id INT PRIMARY KEY NOT NULL,
+    booking_id INT NOT NULL,
+    flight_id INT NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+ALTER TABLE Airline_info RENAME TO Airline;
+ALTER TABLE Booking RENAME COLUMN price TO ticket_price;
+ALTER TABLE Flights ALTER COLUMN departing_gate TYPE TEXT;
+ALTER TABLE Airline DROP COLUMN info;
+
+ALTER TABLE Security_check ADD CONSTRAINT fk_sec_pass FOREIGN KEY (passenger_id) REFERENCES Passengers(passenger_id);
+ALTER TABLE Booking ADD CONSTRAINT fk_book_pass FOREIGN KEY (passenger_id) REFERENCES Passengers(passenger_id);
+ALTER TABLE Baggage_check ADD CONSTRAINT fk_bagcheck_pass FOREIGN KEY (passenger_id) REFERENCES Passengers(passenger_id);
+
+ALTER TABLE Baggage_check ADD CONSTRAINT fk_bagcheck_book FOREIGN KEY (booking_id) REFERENCES Booking(booking_id);
+ALTER TABLE Baggage ADD CONSTRAINT fk_bag_book FOREIGN KEY (booking_id) REFERENCES Booking(booking_id);
+ALTER TABLE Boarding_pass ADD CONSTRAINT fk_board_book FOREIGN KEY (booking_id) REFERENCES Booking(booking_id);
+ALTER TABLE Booking_flight ADD CONSTRAINT fk_bookfl_book FOREIGN KEY (booking_id) REFERENCES Booking(booking_id);
+
+ALTER TABLE Booking_flight ADD CONSTRAINT fk_bookfl_fl FOREIGN KEY (flight_id) REFERENCES Flights(flight_id);
+
+ALTER TABLE Flights ADD CONSTRAINT fk_fl_dep_air FOREIGN KEY (departing_airport_id) REFERENCES Airport(airport_id);
+ALTER TABLE Flights ADD CONSTRAINT fk_fl_arr_air FOREIGN KEY (arriving_airport_id) REFERENCES Airport(airport_id);
+ALTER TABLE Flights ADD CONSTRAINT fk_fl_airline FOREIGN KEY (airline_id) REFERENCES Airline(airline_id);
+
+ALTER TABLE Airline ALTER COLUMN airline_code DROP NOT NULL;
+ALTER TABLE Airport ALTER COLUMN state DROP NOT NULL;
+
+
+INSERT INTO Passengers (passenger_id, first_name, last_name, date_of_birth, gender, country_of_citizenship, country_of_residence, passport_number, created_at, updated_at)
+SELECT 
+    g.i, 'First_' || g.i, 'Last_' || g.i, '1990-01-01'::DATE, 'Male', 'Kazakhstan', 'Kazakhstan', 'PASS' || (1000 + g.i), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM generate_series(1, 10) AS g(i);
+
+
+INSERT INTO Airline (airline_id, airline_code, airline_name, airline_country, created_at, updated_at)
+VALUES (1, 'INIT', 'Initial Air', 'Kazakhstan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+INSERT INTO Airport (airport_id, airport_name, country, state, city, created_at, updated_at)
+VALUES (1, 'Base Airport', 'Kazakhstan', 'Capital', 'Astana', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+
+INSERT INTO Flights (flight_id, sch_departure_time, sch_arrival_time, departing_airport_id, arriving_airport_id, departing_gate, arriving_gate, airline_id, act_departure_time, act_arrival_time, created_at, updated_at)
+VALUES (1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '2 hours', 1, 1, 'A1', 'B1', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '2 hours', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+
+INSERT INTO Booking (booking_id, flight_id, passenger_id, booking_platform, created_at, updated_at, status, ticket_price)
+VALUES (1, 1, 1, 'Website', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Confirmed', 12000.00);
+
+
+
+-- 1
+INSERT INTO Airport (airport_id, airport_name, country, state, city, created_at, updated_at)
+SELECT 
+    g.i + (SELECT COALESCE(MAX(airport_id), 0) FROM Airport) AS airport_id,
+    'Airport_' || g.i,
+    'Country_' || (g.i % 10 + 1),
+    'State_' || (g.i % 5 + 1),
+    'City_' || g.i,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM generate_series(1, 200) AS g(i);
+
+--2
+INSERT INTO Airline (airline_id, airline_code, airline_name, airline_country, created_at, updated_at)
+VALUES (
+    (SELECT COALESCE(MAX(airline_id), 0) + 1 FROM Airline),
+    'KZA',
+    'KazAir',
+    'Kazakhstan',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--3
+UPDATE Airline 
+SET airline_country = 'Turkey',
+    updated_at = CURRENT_TIMESTAMP
+WHERE airline_name = 'KazAir';
+
+--4
+INSERT INTO Airline (airline_id, airline_code, airline_name, airline_country, created_at, updated_at)
+VALUES 
+    ((SELECT COALESCE(MAX(airline_id), 0) + 1 FROM Airline), 'EASY', 'AirEasy', 'France', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ((SELECT COALESCE(MAX(airline_id), 0) + 2 FROM Airline), 'HIGH', 'FlyHigh', 'Brazil', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ((SELECT COALESCE(MAX(airline_id), 0) + 3 FROM Airline), 'FLY',  'FlyFly',  'Poland', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- 5
+DELETE FROM Flights 
+WHERE EXTRACT(YEAR FROM act_arrival_time) = 2024 
+   OR EXTRACT(YEAR FROM sch_arrival_time) = 2024;
+
+--6
+UPDATE Booking 
+SET ticket_price = ticket_price * 1.15,
+    updated_at = CURRENT_TIMESTAMP;
+
+--7
+DELETE FROM Booking 
+WHERE ticket_price < 10000;
+
+--8
+UPDATE Airline 
+SET airline_code = 'UNK',
+    updated_at = CURRENT_TIMESTAMP
+WHERE airline_code IS NULL;
+
+-- 9
+DELETE FROM Baggage_check
+WHERE check_result = 'Not checked'
+  AND created_at < '2023-06-01 00:00:00';
+
+--10
+DELETE FROM Airport 
+WHERE state IS NULL 
+  AND city IN ('Mlawe', 'Kepuh');
+
+--11
+INSERT INTO Baggage_check (baggage_check_id, check_result, created_at, updated_at, booking_id, passenger_id)
+VALUES (
+    (SELECT COALESCE(MAX(baggage_check_id), 0) + 1 FROM Baggage_check),
+    'Not checked',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    (SELECT MIN(booking_id) FROM Booking),
+    (SELECT MIN(passenger_id) FROM Passengers)
+)
+RETURNING baggage_check_id, created_at;
+
+--12
+UPDATE Airline
+SET airline_country = UPPER(airline_country),
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 13
+UPDATE Airline 
+SET airline_name = 'Global Airways',
+    airline_country = 'United Kingdom',
+    updated_at = CURRENT_TIMESTAMP
+WHERE airline_id = 5;
+
+--14
+UPDATE Airport
+SET state = 'Capital District',
+    updated_at = CURRENT_TIMESTAMP
+WHERE city IN ('Astana', 'London', 'Tokyo');
+
+-- 15
+UPDATE Baggage_check 
+SET check_result = 'Checked',
+    updated_at = CURRENT_TIMESTAMP
+WHERE check_result = 'Not checked' 
+  AND created_at >= '2024-03-01 00:00:00' 
+  AND created_at < '2024-04-01 00:00:00';
+
+
+SELECT COUNT(*) FROM Airport;
+
+SELECT * FROM Airline;
+
+
+SELECT * FROM Flights 
+WHERE EXTRACT(YEAR FROM act_arrival_time) = 2024;
+
+SELECT * FROM Booking;
+
+SELECT * FROM Airport 
+WHERE state IS NULL AND city IN ('Mlawe', 'Kepuh');
+
+SELECT * FROM Airport 
+WHERE city IN ('Astana', 'London', 'Tokyo');
+
+SELECT * FROM Baggage_check;
+
+
+DROP TABLE IF EXISTS Baggage_check, Baggage, Boarding_pass, Booking_flight, Booking, Security_check, Flights, Passengers, Airport, Airline, Airline_info CASCADE;
